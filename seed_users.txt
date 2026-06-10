@@ -1,0 +1,14 @@
+PAWWP SEEDED USERS
+====================
+
+All users share the same password for testing: password123
+
+1. Individual Account
+   Email: john@example.com
+   Pet: Buddy (buddy_the_golden)
+
+2. Shelter Account
+   Email: happy_paws@shelter.org
+   Pet: Mittens (mittens_rescue)
+
+Note: Use the email and password to log in via /accounts/login to get a JWT token.

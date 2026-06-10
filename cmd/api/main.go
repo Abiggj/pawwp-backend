@@ -19,6 +19,9 @@ func main() {
 
 	database.Connect()
 
+	// Auto Migration
+	database.DB.AutoMigrate(&account.Account{}, &pet.Pet{})
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
@@ -29,6 +32,10 @@ func main() {
 	accountService := account.NewService(accountRepo)
 	accountHandler := account.NewHandler(accountService)
 
+	petRepo := pet.NewRepository()
+	petService := pet.NewService(petRepo)
+	petHandler := pet.NewHandler(petService)
+
 	// Public routes
 	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("Pawpp backend running 🐾"))
@@ -37,21 +44,14 @@ func main() {
 	http.HandleFunc("/accounts/register", accountHandler.Register)
 	http.HandleFunc("/accounts/login", accountHandler.Login)
 
-// Protected route example
-protected := middleware.JWTAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
-	accountID := r.Context().Value(middleware.AccountIDKey)
-	petRepo := pet.NewRepository()
-	petService := pet.NewService(petRepo)
-	petHandler := pet.NewHandler(petService)
-
+	// Protected routes
 	http.Handle("/pets", middleware.JWTAuth(http.HandlerFunc(petHandler.Create)))
 
-	w.Write([]byte("Authenticated account ID: " + accountID.(string)))
-}))
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request){log.Println("PATH HIT:", r.URL.Path)})
+	// Debug/Catch-all
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		log.Println("PATH HIT:", r.URL.Path)
+	})
 
-	http.Handle("/protected", protected)
 	log.Printf("🚀 Server running on port %s\n", port)
 	log.Fatal(http.ListenAndServe(":"+port, nil))
-}
+	}
