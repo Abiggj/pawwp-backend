@@ -44,8 +44,8 @@ func JWTAuth(next http.Handler) http.Handler {
 		}
 
 		claims, ok := token.Claims.(jwt.MapClaims)
-		if !ok {
-			http.Error(w, "Invalid token claims", http.StatusUnauthorized)
+		if !ok || claims["type"] != "access" {
+			http.Error(w, "Invalid token type", http.StatusUnauthorized)
 			return
 		}
 

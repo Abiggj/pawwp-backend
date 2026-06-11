@@ -11,6 +11,7 @@ type Account struct {
 	Type         string     `json:"type"`
 	Email        string     `json:"email"`
 	PasswordHash string     `json:"-"`
+	RefreshToken string     `json:"-"`
 	Bio          string     `json:"bio"`
 	IsVerified   bool       `json:"is_verified"`
 	CreatedAt    time.Time  `json:"created_at"`
