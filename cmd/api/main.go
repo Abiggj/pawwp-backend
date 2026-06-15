@@ -8,6 +8,7 @@ import (
 	"github.com/joho/godotenv"
 
 	"github.com/Abiggj/pawwp/internal/account"
+	"github.com/Abiggj/pawwp/internal/community"
 	"github.com/Abiggj/pawwp/internal/database"
 	"github.com/Abiggj/pawwp/internal/middleware"
 	"github.com/Abiggj/pawwp/internal/pet"
@@ -20,7 +21,16 @@ func main() {
 	database.Connect()
 
 	// Auto Migration
-	database.DB.AutoMigrate(&account.Account{}, &pet.Pet{}, &post.Post{}, &post.Boop{}, &post.Woof{})
+	database.DB.AutoMigrate(
+		&account.Account{},
+		&pet.Pet{},
+		&post.Post{},
+		&post.Boop{},
+		&post.Woof{},
+		&community.Channel{},
+		&community.ChannelPost{},
+		&community.Subscription{},
+	)
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -39,6 +49,10 @@ func main() {
 	postRepo := post.NewRepository()
 	postService := post.NewService(postRepo, petRepo)
 	postHandler := post.NewHandler(postService)
+
+	communityRepo := community.NewRepository()
+	communityService := community.NewService(communityRepo, accountRepo)
+	communityHandler := community.NewHandler(communityService)
 
 	mux := http.NewServeMux()
 
@@ -63,7 +77,7 @@ func main() {
 	mux.Handle("DELETE /pets/{id}", middleware.JWTAuth(http.HandlerFunc(petHandler.Delete)))
 	mux.Handle("GET /accounts/{account_id}/pets", middleware.JWTAuth(http.HandlerFunc(petHandler.ListByAccount)))
 
-	// Post routes
+	// Post routes (Personal Media)
 	mux.Handle("POST /posts", middleware.JWTAuth(http.HandlerFunc(postHandler.Create)))
 	mux.Handle("GET /feed", middleware.JWTAuth(http.HandlerFunc(postHandler.GetFeed)))
 	mux.Handle("GET /pets/{pet_id}/showcase", middleware.JWTAuth(http.HandlerFunc(postHandler.GetShowcase)))
@@ -72,6 +86,21 @@ func main() {
 	mux.Handle("POST /posts/{post_id}/boops", middleware.JWTAuth(http.HandlerFunc(postHandler.ToggleBoop)))
 	mux.Handle("POST /posts/{post_id}/woofs", middleware.JWTAuth(http.HandlerFunc(postHandler.AddWoof)))
 	mux.Handle("GET /posts/{post_id}/woofs", middleware.JWTAuth(http.HandlerFunc(postHandler.GetWoofs)))
+
+	// Community routes
+	mux.Handle("POST /community/channels", middleware.JWTAuth(http.HandlerFunc(communityHandler.CreateChannel)))
+	mux.Handle("GET /community/channels", middleware.JWTAuth(http.HandlerFunc(communityHandler.ListChannels)))
+	mux.Handle("GET /community/channels/{id}", middleware.JWTAuth(http.HandlerFunc(communityHandler.GetChannel)))
+	mux.Handle("PUT /community/channels/{id}", middleware.JWTAuth(http.HandlerFunc(communityHandler.UpdateChannel)))
+
+	mux.Handle("POST /community/channels/{id}/posts", middleware.JWTAuth(http.HandlerFunc(communityHandler.CreatePost)))
+	mux.Handle("GET /community/channels/{id}/posts", middleware.JWTAuth(http.HandlerFunc(communityHandler.ListPosts)))
+	mux.Handle("PUT /community/posts/{post_id}/status", middleware.JWTAuth(http.HandlerFunc(communityHandler.UpdatePostStatus)))
+
+	mux.Handle("POST /community/channels/{id}/subscribe", middleware.JWTAuth(http.HandlerFunc(communityHandler.Subscribe)))
+	mux.Handle("DELETE /community/channels/{id}/subscribe", middleware.JWTAuth(http.HandlerFunc(communityHandler.Unsubscribe)))
+	mux.Handle("GET /accounts/me/subscriptions", middleware.JWTAuth(http.HandlerFunc(communityHandler.GetMySubscriptions)))
+	mux.Handle("GET /community/feed", middleware.JWTAuth(http.HandlerFunc(communityHandler.GetFeed)))
 
 	// Debug/Catch-all
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {

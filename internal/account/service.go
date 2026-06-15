@@ -43,6 +43,10 @@ type UpdateRequest struct {
 }
 
 func (s *service) Register(req RegisterRequest) (*Account, error) {
+	if req.Type != "parent" && req.Type != "shelter" {
+		return nil, errors.New("invalid account type: must be 'parent' or 'shelter'")
+	}
+
 	existing, _ := s.repo.FindByEmail(req.Email)
 	if existing != nil {
 		return nil, errors.New("email already exists")
