@@ -20,6 +20,16 @@ type Repository interface {
 	Subscribe(sub *Subscription) error
 	Unsubscribe(accountID, channelID uuid.UUID) error
 	GetSubscriptions(accountID uuid.UUID) ([]Subscription, error)
+
+	AddChannelAdmin(admin *ChannelAdmin) error
+	ListChannelAdmins(channelID uuid.UUID) ([]ChannelAdmin, error)
+	IsChannelAdmin(channelID, accountID uuid.UUID) (bool, error)
+
+	CreateQuestion(q *TownhallQuestion) error
+	ListQuestions(category string) ([]TownhallQuestion, error)
+	FindQuestionByID(id string) (*TownhallQuestion, error)
+	CreateAnswer(a *TownhallAnswer) error
+	VoteQuestion(id string) error
 }
 
 type repository struct{}
@@ -91,4 +101,55 @@ func (r *repository) GetSubscriptions(accountID uuid.UUID) ([]Subscription, erro
 	var subs []Subscription
 	err := database.DB.Where("account_id = ?", accountID).Find(&subs).Error
 	return subs, err
+}
+
+func (r *repository) AddChannelAdmin(admin *ChannelAdmin) error {
+	return database.DB.Create(admin).Error
+}
+
+func (r *repository) ListChannelAdmins(channelID uuid.UUID) ([]ChannelAdmin, error) {
+	var admins []ChannelAdmin
+	err := database.DB.Table("channel_admins").
+		Select("channel_admins.*, accounts.email as admin_email, accounts.bio as admin_name").
+		Joins("LEFT JOIN accounts ON accounts.id = channel_admins.account_id").
+		Where("channel_admins.channel_id = ?", channelID).
+		Find(&admins).Error
+	return admins, err
+}
+
+func (r *repository) IsChannelAdmin(channelID, accountID uuid.UUID) (bool, error) {
+	var count int64
+	err := database.DB.Model(&ChannelAdmin{}).
+		Where("channel_id = ? AND account_id = ?", channelID, accountID).
+		Count(&count).Error
+	return count > 0, err
+}
+
+func (r *repository) CreateQuestion(q *TownhallQuestion) error {
+	return database.DB.Create(q).Error
+}
+
+func (r *repository) ListQuestions(category string) ([]TownhallQuestion, error) {
+	var questions []TownhallQuestion
+	query := database.DB.Preload("Answers").Order("is_urgent desc, created_at desc")
+	if category != "" && category != "all" {
+		query = query.Where("category = ?", category)
+	}
+	err := query.Find(&questions).Error
+	return questions, err
+}
+
+func (r *repository) FindQuestionByID(id string) (*TownhallQuestion, error) {
+	var q TownhallQuestion
+	err := database.DB.Preload("Answers").Where("id = ?", id).First(&q).Error
+	return &q, err
+}
+
+func (r *repository) CreateAnswer(a *TownhallAnswer) error {
+	return database.DB.Create(a).Error
+}
+
+func (r *repository) VoteQuestion(id string) error {
+	return database.DB.Model(&TownhallQuestion{}).Where("id = ?", id).
+		UpdateColumn("helpful_votes", database.DB.Raw("helpful_votes + 1")).Error
 }

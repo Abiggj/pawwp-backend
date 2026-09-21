@@ -1,14 +1,41 @@
-PAWWP SEEDED USERS
-====================
+PAWWP SEEDED SAMPLE PROFILES & CREDENTIALS
+=============================================
 
-All users share the same password for testing: password123
+All test accounts share the same password: password123
 
-1. Individual Account
-   Email: john@example.com
-   Pet: Buddy (buddy_the_golden)
+1. PET PARENTS:
+   -------------------------------------------------
+   • John Doe (Dog Dad)
+     Email: john@example.com
+     Pets: Buddy (buddy_goldie, Golden Retriever - 9-post showcase)
+           Milo (milo_corgi, Corgi)
 
-2. Shelter Account
-   Email: happy_paws@shelter.org
-   Pet: Mittens (mittens_rescue)
+   • Elena Rostova (Cat Mom & Foster)
+     Email: elena@example.com
+     Pets: Cleo (cleo_queen, Persian Cat)
 
-Note: Use the email and password to log in via /accounts/login to get a JWT token.
+   • Marcus Vance
+     Email: marcus@example.com
+     Pets: Rocky (rocky_frenchie, French Bulldog)
+
+2. SHELTERS / NGOS:
+   -------------------------------------------------
+   • Happy Paws Rescue Hub (501c3)
+     Email: contact@happypaws.org
+     Pets for Adoption: Luna (luna_rescue, Siamese Mix)
+                        Barnaby (barnaby_beagle, Beagle Mix)
+     Channel: Happy Paws Adoption Hub
+
+   • City Stray Animal Alliance (Emergency Rescue)
+     Email: rescue@citystrays.org
+     Pets for Adoption: Oliver (oliver_tabby, Rescued Kitten)
+     Channel: Tri-State SOS & Urgent Rescues
+
+   • Second Chance Animal Sanctuary (Special Needs)
+     Email: haven@secondchance.org
+     Sanctuary Pets: Bruno (bruno_shepherd, German Shepherd)
+     Channel: Sanctuary Care & Medical Drives
+
+API LOGIN INSTRUCTIONS:
+- Endpoint: POST http://localhost:8080/accounts/login
+- Body: {"email": "john@example.com", "password": "password123"}

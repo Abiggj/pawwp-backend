@@ -30,6 +30,9 @@ func main() {
 		&community.Channel{},
 		&community.ChannelPost{},
 		&community.Subscription{},
+		&community.ChannelAdmin{},
+		&community.TownhallQuestion{},
+		&community.TownhallAnswer{},
 	)
 
 	port := os.Getenv("PORT")
@@ -58,7 +61,7 @@ func main() {
 
 	// Public routes
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("Pawpp backend running 🐾"))
+		w.Write([]byte("Pawpp backend running"))
 	})
 
 	mux.HandleFunc("POST /accounts/register", accountHandler.Register)
@@ -102,11 +105,21 @@ func main() {
 	mux.Handle("GET /accounts/me/subscriptions", middleware.JWTAuth(http.HandlerFunc(communityHandler.GetMySubscriptions)))
 	mux.Handle("GET /community/feed", middleware.JWTAuth(http.HandlerFunc(communityHandler.GetFeed)))
 
+	// Channel Admins
+	mux.Handle("GET /community/channels/{id}/admins", middleware.JWTAuth(http.HandlerFunc(communityHandler.ListChannelAdmins)))
+	mux.Handle("POST /community/channels/{id}/admins", middleware.JWTAuth(http.HandlerFunc(communityHandler.AddChannelAdmin)))
+
+	// Townhall Q&A routes
+	mux.HandleFunc("GET /community/townhall/questions", communityHandler.ListQuestions)
+	mux.Handle("POST /community/townhall/questions", middleware.JWTAuth(http.HandlerFunc(communityHandler.CreateQuestion)))
+	mux.Handle("POST /community/townhall/questions/{id}/answers", middleware.JWTAuth(http.HandlerFunc(communityHandler.CreateAnswer)))
+	mux.HandleFunc("POST /community/townhall/questions/{id}/vote", communityHandler.VoteQuestion)
+
 	// Debug/Catch-all
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		log.Println("PATH HIT:", r.URL.Path)
 	})
 
-	log.Printf("🚀 Server running on port %s\n", port)
-	log.Fatal(http.ListenAndServe(":"+port, mux))
+	log.Printf("Server running on port %s\n", port)
+	log.Fatal(http.ListenAndServe(":"+port, middleware.CORS(mux)))
 }

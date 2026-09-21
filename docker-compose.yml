@@ -1,26 +1,68 @@
 services:
+  # 1. PostgreSQL Database
   db:
     image: postgres:15-alpine
+    container_name: pawwp-db
+    restart: unless-stopped
     environment:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
       POSTGRES_DB: pawwp
     ports:
       - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U user -d pawwp"]
       interval: 5s
       timeout: 5s
       retries: 5
 
-  app:
-    build: .
+  # 2. Go Backend API Server
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pawwp-backend
+    restart: unless-stopped
     ports:
       - "8080:8080"
     environment:
       DB_URL: postgres://user:password@db:5432/pawwp?sslmode=disable
-      JWT_SECRET: your_super_secret_key
+      JWT_SECRET: your_super_secret_key_change_me_in_production
       PORT: 8080
     depends_on:
       db:
         condition: service_healthy
+
+  # 3. Web Frontend (Pawwp Web - Separate Repository)
+  frontend:
+    build:
+      context: ../pawwp-web
+      dockerfile: Dockerfile
+    container_name: pawwp-web
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:8080
+    depends_on:
+      - backend
+
+  # 4. Optional Database Seeder (run with: docker compose --profile seed run --rm seed)
+  seed:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pawwp-seeder
+    command: ["./seed"]
+    environment:
+      DB_URL: postgres://user:password@db:5432/pawwp?sslmode=disable
+    depends_on:
+      db:
+        condition: service_healthy
+    profiles:
+      - seed
+
+volumes:
+  postgres_data:

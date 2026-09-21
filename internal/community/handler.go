@@ -211,3 +211,107 @@ func (h *Handler) GetMySubscriptions(w http.ResponseWriter, r *http.Request) {
 	}
 	response.JSON(w, http.StatusOK, channels)
 }
+
+func (h *Handler) ListChannelAdmins(w http.ResponseWriter, r *http.Request) {
+	channelID := r.PathValue("id")
+	admins, err := h.service.ListChannelAdmins(channelID)
+	if err != nil {
+		response.Error(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	response.JSON(w, http.StatusOK, admins)
+}
+
+func (h *Handler) AddChannelAdmin(w http.ResponseWriter, r *http.Request) {
+	channelID := r.PathValue("id")
+	var req struct {
+		AccountID string `json:"account_id"`
+		Role      string `json:"role"`
+	}
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil || req.AccountID == "" {
+		response.Error(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	accountID, err := h.getAccountID(r)
+	if err != nil {
+		response.Error(w, http.StatusUnauthorized, err.Error())
+		return
+	}
+
+	err = h.service.AddChannelAdmin(channelID, req.AccountID, req.Role, accountID)
+	if err != nil {
+		response.Error(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	response.JSON(w, http.StatusOK, map[string]string{"message": "Admin added successfully"})
+}
+
+func (h *Handler) ListQuestions(w http.ResponseWriter, r *http.Request) {
+	category := r.URL.Query().Get("category")
+	questions, err := h.service.ListTownhallQuestions(category)
+	if err != nil {
+		response.Error(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	response.JSON(w, http.StatusOK, questions)
+}
+
+func (h *Handler) CreateQuestion(w http.ResponseWriter, r *http.Request) {
+	var req CreateQuestionRequest
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil || req.Title == "" || req.Content == "" {
+		response.Error(w, http.StatusBadRequest, "Title and content are required")
+		return
+	}
+
+	accountID, err := h.getAccountID(r)
+	if err != nil {
+		response.Error(w, http.StatusUnauthorized, err.Error())
+		return
+	}
+
+	question, err := h.service.CreateTownhallQuestion(req, accountID)
+	if err != nil {
+		response.Error(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	response.JSON(w, http.StatusCreated, question)
+}
+
+func (h *Handler) CreateAnswer(w http.ResponseWriter, r *http.Request) {
+	questionID := r.PathValue("id")
+	var req struct {
+		Content string `json:"content"`
+	}
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil || req.Content == "" {
+		response.Error(w, http.StatusBadRequest, "Content is required")
+		return
+	}
+
+	accountID, err := h.getAccountID(r)
+	if err != nil {
+		response.Error(w, http.StatusUnauthorized, err.Error())
+		return
+	}
+
+	answer, err := h.service.CreateTownhallAnswer(questionID, req.Content, accountID)
+	if err != nil {
+		response.Error(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	response.JSON(w, http.StatusCreated, answer)
+}
+
+func (h *Handler) VoteQuestion(w http.ResponseWriter, r *http.Request) {
+	questionID := r.PathValue("id")
+	err := h.service.VoteTownhallQuestion(questionID)
+	if err != nil {
+		response.Error(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	response.JSON(w, http.StatusOK, map[string]string{"message": "Voted successfully"})
+}
+
