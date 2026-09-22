@@ -24,9 +24,11 @@ func main() {
 	database.DB.AutoMigrate(
 		&account.Account{},
 		&pet.Pet{},
+		&pet.MedicalRecord{},
 		&post.Post{},
 		&post.Boop{},
 		&post.Woof{},
+		&post.PostView{},
 		&community.Channel{},
 		&community.ChannelPost{},
 		&community.Subscription{},
@@ -61,7 +63,7 @@ func main() {
 
 	// Public routes
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("Pawpp backend running"))
+		w.Write([]byte("Pawwp backend running"))
 	})
 
 	mux.HandleFunc("POST /accounts/register", accountHandler.Register)
@@ -80,6 +82,11 @@ func main() {
 	mux.Handle("DELETE /pets/{id}", middleware.JWTAuth(http.HandlerFunc(petHandler.Delete)))
 	mux.Handle("GET /accounts/{account_id}/pets", middleware.JWTAuth(http.HandlerFunc(petHandler.ListByAccount)))
 
+	// Pet Medical Records routes
+	mux.Handle("POST /pets/{id}/medical-records", middleware.JWTAuth(http.HandlerFunc(petHandler.CreateMedicalRecord)))
+	mux.Handle("GET /pets/{id}/medical-records", middleware.JWTAuth(http.HandlerFunc(petHandler.GetMedicalRecords)))
+	mux.Handle("DELETE /pets/{id}/medical-records/{record_id}", middleware.JWTAuth(http.HandlerFunc(petHandler.DeleteMedicalRecord)))
+
 	// Post routes (Personal Media)
 	mux.Handle("POST /posts", middleware.JWTAuth(http.HandlerFunc(postHandler.Create)))
 	mux.Handle("GET /feed", middleware.JWTAuth(http.HandlerFunc(postHandler.GetFeed)))
@@ -87,8 +94,10 @@ func main() {
 	mux.Handle("PUT /posts/{post_id}/showcase", middleware.JWTAuth(http.HandlerFunc(postHandler.ToggleShowcase)))
 	mux.Handle("GET /pets/{pet_id}/archive", middleware.JWTAuth(http.HandlerFunc(postHandler.GetArchive)))
 	mux.Handle("POST /posts/{post_id}/boops", middleware.JWTAuth(http.HandlerFunc(postHandler.ToggleBoop)))
+	mux.Handle("GET /posts/{post_id}/boops", middleware.JWTAuth(http.HandlerFunc(postHandler.GetBoops)))
 	mux.Handle("POST /posts/{post_id}/woofs", middleware.JWTAuth(http.HandlerFunc(postHandler.AddWoof)))
 	mux.Handle("GET /posts/{post_id}/woofs", middleware.JWTAuth(http.HandlerFunc(postHandler.GetWoofs)))
+	mux.HandleFunc("POST /posts/{post_id}/views", postHandler.RecordView)
 
 	// Community routes
 	mux.Handle("POST /community/channels", middleware.JWTAuth(http.HandlerFunc(communityHandler.CreateChannel)))

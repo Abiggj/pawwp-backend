@@ -122,3 +122,73 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	response.JSON(w, http.StatusOK, map[string]string{"message": "Pet deleted successfully"})
 }
+
+func (h *Handler) CreateMedicalRecord(w http.ResponseWriter, r *http.Request) {
+	petIDStr := r.PathValue("id")
+	petID, err := uuid.Parse(petIDStr)
+	if err != nil {
+		response.Error(w, http.StatusBadRequest, "Invalid pet ID")
+		return
+	}
+
+	accountID, err := h.getAccountID(r)
+	if err != nil {
+		response.Error(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	var req CreateMedicalRecordRequest
+	err = json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		response.Error(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	record, err := h.service.CreateMedicalRecord(req, petID, accountID)
+	if err != nil {
+		response.Error(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	response.JSON(w, http.StatusCreated, record)
+}
+
+func (h *Handler) GetMedicalRecords(w http.ResponseWriter, r *http.Request) {
+	petIDStr := r.PathValue("id")
+	petID, err := uuid.Parse(petIDStr)
+	if err != nil {
+		response.Error(w, http.StatusBadRequest, "Invalid pet ID")
+		return
+	}
+
+	records, err := h.service.GetMedicalRecords(petID)
+	if err != nil {
+		response.Error(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	response.JSON(w, http.StatusOK, records)
+}
+
+func (h *Handler) DeleteMedicalRecord(w http.ResponseWriter, r *http.Request) {
+	recordIDStr := r.PathValue("record_id")
+	recordID, err := uuid.Parse(recordIDStr)
+	if err != nil {
+		response.Error(w, http.StatusBadRequest, "Invalid record ID")
+		return
+	}
+
+	accountID, err := h.getAccountID(r)
+	if err != nil {
+		response.Error(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	err = h.service.DeleteMedicalRecord(recordID, accountID)
+	if err != nil {
+		response.Error(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	response.JSON(w, http.StatusOK, map[string]string{"message": "Medical record deleted"})
+}

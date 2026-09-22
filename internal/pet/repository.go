@@ -12,6 +12,10 @@ type Repository interface {
 	FindByAccountID(accountID uuid.UUID) ([]Pet, error)
 	Update(pet *Pet) error
 	Delete(id string) error
+
+	CreateMedicalRecord(record *MedicalRecord) error
+	GetMedicalRecordsByPetID(petID uuid.UUID) ([]MedicalRecord, error)
+	DeleteMedicalRecord(recordID uuid.UUID, accountID uuid.UUID) error
 }
 
 type repository struct{}
@@ -54,4 +58,18 @@ func (r *repository) Update(pet *Pet) error {
 
 func (r *repository) Delete(id string) error {
 	return database.DB.Delete(&Pet{}, "id = ?", id).Error
+}
+
+func (r *repository) CreateMedicalRecord(record *MedicalRecord) error {
+	return database.DB.Create(record).Error
+}
+
+func (r *repository) GetMedicalRecordsByPetID(petID uuid.UUID) ([]MedicalRecord, error) {
+	var records []MedicalRecord
+	err := database.DB.Where("pet_id = ?", petID).Order("created_at desc").Find(&records).Error
+	return records, err
+}
+
+func (r *repository) DeleteMedicalRecord(recordID uuid.UUID, accountID uuid.UUID) error {
+	return database.DB.Delete(&MedicalRecord{}, "id = ? AND account_id = ?", recordID, accountID).Error
 }

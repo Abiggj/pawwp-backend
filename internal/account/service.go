@@ -32,19 +32,28 @@ type AuthResponse struct {
 }
 
 type RegisterRequest struct {
-	Type     string `json:"type"`
-	Email    string `json:"email"`
-	Password string `json:"password"`
-	Bio      string `json:"bio"`
+	Type        string `json:"type"` // parent, shelter_admin, volunteer, shelter
+	Name        string `json:"name"`
+	Email       string `json:"email"`
+	Password    string `json:"password"`
+	ShelterName string `json:"shelter_name"`
+	RoleTitle   string `json:"role_title"`
+	Bio         string `json:"bio"`
 }
 
 type UpdateRequest struct {
-	Bio string `json:"bio"`
+	Name        string `json:"name"`
+	Bio         string `json:"bio"`
+	ShelterName string `json:"shelter_name"`
+	RoleTitle   string `json:"role_title"`
 }
 
 func (s *service) Register(req RegisterRequest) (*Account, error) {
-	if req.Type != "parent" && req.Type != "shelter" {
-		return nil, errors.New("invalid account type: must be 'parent' or 'shelter'")
+	if req.Type == "" {
+		req.Type = "parent"
+	}
+	if req.Type != "parent" && req.Type != "shelter_admin" && req.Type != "volunteer" && req.Type != "shelter" {
+		return nil, errors.New("invalid account type: must be 'parent', 'shelter_admin', 'volunteer', or 'shelter'")
 	}
 
 	existing, _ := s.repo.FindByEmail(req.Email)
@@ -59,8 +68,11 @@ func (s *service) Register(req RegisterRequest) (*Account, error) {
 
 	account := &Account{
 		Type:         req.Type,
+		Name:         req.Name,
 		Email:        req.Email,
 		PasswordHash: string(hashed),
+		ShelterName:  req.ShelterName,
+		RoleTitle:    req.RoleTitle,
 		Bio:          req.Bio,
 	}
 

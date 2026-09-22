@@ -20,7 +20,7 @@ func main() {
 
 	// 1. Clear existing data
 	log.Println("Clearing existing data...")
-	database.DB.Exec("TRUNCATE accounts, pets, posts, boops, woofs, channels, channel_posts, subscriptions, channel_admins, townhall_questions, townhall_answers CASCADE")
+	database.DB.Exec("TRUNCATE accounts, pets, posts, boops, woofs, post_views, channels, channel_posts, subscriptions, channel_admins, townhall_questions, townhall_answers CASCADE")
 
 	// 2. Create Accounts
 	log.Println("Seeding Diverse Accounts...")

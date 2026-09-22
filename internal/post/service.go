@@ -2,6 +2,7 @@ package post
 
 import (
 	"errors"
+	"time"
 
 	"github.com/Abiggj/pawwp/internal/pet"
 	"github.com/google/uuid"
@@ -15,8 +16,11 @@ type Service interface {
 	GetPetArchive(petID uuid.UUID, accountID uuid.UUID) ([]Post, error)
 
 	ToggleBoop(postID string, accountID uuid.UUID) error
+	GetPostBoops(postID string) ([]BoopDetail, error)
 	AddWoof(postID string, content string, accountID uuid.UUID) (*Woof, error)
-	GetPostWoofs(postID string) ([]Woof, error)
+	GetPostWoofs(postID string) ([]WoofDetail, error)
+	RecordView(postID string, accountID *uuid.UUID, viewerKey string, dwellSeconds int) (int64, bool, error)
+	GetPostViews(postID string) (int64, error)
 }
 
 type service struct {
@@ -69,12 +73,8 @@ func (s *service) ToggleShowcase(postID string, accountID uuid.UUID) (*Post, err
 	}
 
 	pet, err := s.petRepo.FindByID(post.PetID.String())
-	if err != nil {
-		return nil, errors.New("associated pet not found")
-	}
-
-	if pet.AccountID != accountID {
-		return nil, errors.New("unauthorized")
+	if err != nil || pet.AccountID != accountID {
+		return nil, errors.New("unauthorized: you do not own this post")
 	}
 
 	if !post.IsShowcased {
@@ -83,25 +83,19 @@ func (s *service) ToggleShowcase(postID string, accountID uuid.UUID) (*Post, err
 			return nil, err
 		}
 		if count >= 9 {
-			return nil, errors.New("showcase limit reached (max 9)")
+			return nil, errors.New("showcase is full (max 9 posts)")
 		}
-		post.IsShowcased = true
-	} else {
-		post.IsShowcased = false
 	}
 
+	post.IsShowcased = !post.IsShowcased
 	err = s.repo.Update(post)
 	return post, err
 }
 
 func (s *service) GetPetArchive(petID uuid.UUID, accountID uuid.UUID) ([]Post, error) {
 	pet, err := s.petRepo.FindByID(petID.String())
-	if err != nil {
-		return nil, errors.New("pet not found")
-	}
-
-	if pet.AccountID != accountID {
-		return nil, errors.New("unauthorized")
+	if err != nil || pet.AccountID != accountID {
+		return nil, errors.New("unauthorized: you do not own this pet")
 	}
 
 	return s.repo.GetArchiveByPetID(petID)
@@ -113,25 +107,26 @@ func (s *service) ToggleBoop(postID string, accountID uuid.UUID) error {
 		return errors.New("invalid post id")
 	}
 
-	// Try to remove first (untoggle)
-	err = s.repo.RemoveBoop(accountID, pID)
-	if err == nil {
-		// If delete succeeded, it means it was toggled on, now off.
-		// Wait, GORM Delete might not return error if 0 rows affected.
-		// Let's assume AddBoop will fail if already exists due to unique index.
+	post, err := s.repo.FindByID(postID)
+	if err != nil {
+		return errors.New("post not found")
 	}
 
-	// This is a bit naive, better would be to check existence or use a upsert-like logic.
-	// But according to plan "Toggle a boop".
+	fortyEightHoursAgo := time.Now().Add(-48 * time.Hour)
+	if post.CreatedAt.Before(fortyEightHoursAgo) {
+		return errors.New("this post has expired (older than 48 hours)")
+	}
+
 	boop := &Boop{
 		AccountID: accountID,
 		PostID:    pID,
 	}
+
 	err = s.repo.AddBoop(boop)
 	if err != nil {
-		// If already exists, remove it
 		return s.repo.RemoveBoop(accountID, pID)
 	}
+
 	return nil
 }
 
@@ -151,10 +146,41 @@ func (s *service) AddWoof(postID string, content string, accountID uuid.UUID) (*
 	return woof, err
 }
 
-func (s *service) GetPostWoofs(postID string) ([]Woof, error) {
+func (s *service) GetPostBoops(postID string) ([]BoopDetail, error) {
 	pID, err := uuid.Parse(postID)
 	if err != nil {
 		return nil, errors.New("invalid post id")
 	}
-	return s.repo.GetWoofsByPostID(pID)
+	return s.repo.GetBoopsByPostID(pID)
+}
+
+func (s *service) GetPostWoofs(postID string) ([]WoofDetail, error) {
+	pID, err := uuid.Parse(postID)
+	if err != nil {
+		return nil, errors.New("invalid post id")
+	}
+	return s.repo.GetWoofDetailsByPostID(pID)
+}
+
+func (s *service) RecordView(postID string, accountID *uuid.UUID, viewerKey string, dwellSeconds int) (int64, bool, error) {
+	pID, err := uuid.Parse(postID)
+	if err != nil {
+		return 0, false, errors.New("invalid post id")
+	}
+	if viewerKey == "" {
+		if accountID != nil {
+			viewerKey = accountID.String()
+		} else {
+			viewerKey = "guest"
+		}
+	}
+	return s.repo.RecordAuthenticView(pID, accountID, viewerKey, dwellSeconds)
+}
+
+func (s *service) GetPostViews(postID string) (int64, error) {
+	pID, err := uuid.Parse(postID)
+	if err != nil {
+		return 0, errors.New("invalid post id")
+	}
+	return s.repo.GetPostViewsCount(pID)
 }

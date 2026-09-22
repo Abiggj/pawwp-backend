@@ -162,3 +162,46 @@ func (h *Handler) GetWoofs(w http.ResponseWriter, r *http.Request) {
 	}
 	response.JSON(w, http.StatusOK, woofs)
 }
+
+func (h *Handler) GetBoops(w http.ResponseWriter, r *http.Request) {
+	postID := r.PathValue("post_id")
+	boops, err := h.service.GetPostBoops(postID)
+	if err != nil {
+		response.Error(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	response.JSON(w, http.StatusOK, boops)
+}
+
+type RecordViewRequest struct {
+	DwellSeconds int    `json:"dwell_seconds"`
+	ViewerKey    string `json:"viewer_key"`
+}
+
+func (h *Handler) RecordView(w http.ResponseWriter, r *http.Request) {
+	postID := r.PathValue("post_id")
+	var req RecordViewRequest
+	_ = json.NewDecoder(r.Body).Decode(&req)
+
+	if req.DwellSeconds == 0 {
+		req.DwellSeconds = 2
+	}
+
+	var accountID *uuid.UUID
+	accID, err := h.getAccountID(r)
+	if err == nil {
+		accountID = &accID
+	}
+
+	viewsCount, isNew, err := h.service.RecordView(postID, accountID, req.ViewerKey, req.DwellSeconds)
+	if err != nil {
+		response.Error(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	response.JSON(w, http.StatusOK, map[string]interface{}{
+		"views_count":       viewsCount,
+		"is_authentic_view": isNew,
+		"threshold_met":     req.DwellSeconds >= 2,
+	})
+}
